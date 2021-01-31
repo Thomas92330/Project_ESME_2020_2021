@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <style>
+        #TITLE {
+            text-align: center;
+             color:blue;
+        }
+        #ONOS {
+            color:blue;
+        }
+
+        #section-1 {background-color: bisque;}
+        nav {float: left; border:0.33%;}
+
+        .flex-container {
+            display: flex;
+            flex-direction: row;
+            font-size: 10px;
+            text-align: center;
+            }
+        .flex-item-left{
+            background-color: #f1f1f1;
+            padding: 10px;
+            flex: 50%;
+        }
+        .flex-item-center{
+            background-color: #f1f1f1;
+            padding: 10px;
+            flex: 50%;
+        }
+        .flex-item-right{
+            background-color: #f1f1f1;
+            padding: 10px;
+            flex: 50%;
+
+        }
+    </style>
+
+        <title>PROJET_SD_WAN</title>
+    </head>
+
+
+    <body>
+        <h1 id="TITLE">
+            PROJET_SD_WAN
+        </h1>
+
+        <div class="flex-container">
+
+            <div class="flex-item-left">
+                <form action="/vector_image">
+                    <input type="submit" value="Display image" class="ONOS" class="flex-item-left">
+                </form>
+
+            </div>
+
+            <div class="flex-item-center">
+                <form action="/generate_path/{source_target}">
+                <div>
+                <input type="submit" value="Deploy RL" class="ONOS" class="flex-item-left"">
+                </div>
+                </p>
+                <input type="number" id="source" name="source" min="0" max="50">
+                <input type="number" id="target" name="target" min="0" max="50">
+                
+            </form>
+            </div>
+
+            <div class="flex-item-right">
+            <button>
+                <h1 href="/docs#/" class="ONOS">
+                    DOCS
+                </h1>
+            </button>
+            </div>
+
+
+        </div>
+
+        <img src='../vector_image'>
+
+        <script>
+        </script>
+
+
+    </body>
+
+</html>
