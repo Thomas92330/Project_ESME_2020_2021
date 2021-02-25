@@ -21,6 +21,8 @@ net.draw_initial_graph()
 # RL_MC = RL_part(net, 1,2)
 # RL_MC.Monte_carlo(1)
 
+bdw = 1
 RL_Q = RL_part(net, 1,2)
-RL_Q.Q_table(1)
+RL_Q.Q_table(bdw)
+RL_Q.Monte_carlo(bdw)
 
