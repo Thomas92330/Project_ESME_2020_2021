@@ -18,7 +18,7 @@ class network():
         """
 
         self.g = nx.to_directed(nx.fast_gnp_random_graph(nodes,edges/nodes,directed=True))
-        
+        self.nodes = nodes
         self.node_pose = {}
         for i in self.g.nodes():
             self.node_pose[i] = (random.uniform(1.0, 10.0),random.uniform(1.0, 10.0))
@@ -148,9 +148,10 @@ class network():
         #draw the network
     def draw_initial_graph(self):
         nx.draw(self.g, with_labels=True)
-        plt.savefig("Initial_Graph")
+        # plt.savefig("Initial_Graph")
+        plt.show()
         plt.close()
-        # plt.show()
+
 
     def net(self):
         return self.g.edges
