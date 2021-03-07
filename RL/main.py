@@ -15,6 +15,6 @@ bdw = 1
 # RL_Q.Q_table_test(bdw)
 # RL_Q.Q_table_test(bdw)
 # RL_Q.Monte_carlo(bdw)
-DQRL = DRL(net,1,2) 
+DQRL = DRL(net,1,24) 
 DQRL.DRL_table(bdw)
 

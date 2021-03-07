@@ -22,7 +22,7 @@ from tensorflow.keras.optimizers import Adam
 class DRL():
 
     def __init__(self, net, source, target):
-        self.iter = 100
+        self.iter = 5
         
         self.var_dict = {}
         self.net = net
@@ -109,42 +109,55 @@ class DRL():
         return nodes_list
     
     def get_state(self, solve_var):
-        state = np.zeros((self.net.nodes,self.net.nodes))
+        state = np.zeros((self.net.nodes,self.net.nodes), np.int8)
         for (i,j) in self.g.edges:
             if (i,j) in solve_var:
                 state[i,j] = 1
+            elif i == self.source:
+                state[i,j] = 2
+            elif j == self.target:
+                state[i,j] = 2
             else:
                 state[i,j] = 0
         return state
-    
-    def get_reward(self, solve_var, terminated):
-        reward = -1 * len(solve_var)
-        if terminated:
-            reward = reward + 25
+    def f(self,seq): # Order preserving
+        ''' Modified version of Dave Kirby solution '''
+        seen = set()
+        return [x for x in seq if x not in seen and not seen.add(x)]
     
     def give_final_reward(self,solve_var,neg_reward):
         cpt=0
+        list_of_action_taken = []
         for state in self.expirience_replay:
+            #print("cpt = {}".format(cpt))
+            print(state)
             action_taken = solve_var[cpt][1]
-            target = self.q_network.predict(state)
-    
-            target[0][action_taken] = target[0][action_taken] + 25/neg_reward
-            self.q_network.fit(state, target, epochs=1, verbose=0)
+            
+            print("action taken = {}".format(action_taken))
+            
+            if (action_taken not in list_of_action_taken ):
+                list_of_action_taken.add(action_taken)
+                target = self.q_network.predict(state)
+        
+                target[0][action_taken] = target[0][action_taken] + 25/neg_reward
+                self.q_network.fit(state, target, epochs=1, verbose=0)
+                cpt = cpt + 1
         self.expirience_replay.clear()
-        
-        
-        
         
     def train(self,solve_var,current_node,action_taken): 
         state = self.get_state(solve_var)
+        #print(state)
+        
+        print(self.expirience_replay)
+        
         self.expirience_replay.append(state) 
         
         target = self.q_network.predict(state)
         
         for j in self.get_list_possibles_nodes(current_node):
-            target[0][j] = target[0][j] + 1
+            target[0][j] = target[0][j] + 0.1
 
-        target[0][action_taken] = target[0][action_taken] - 10
+        target[0][action_taken] = target[0][action_taken] - 1
         self.q_network.fit(state, target, epochs=1, verbose=0)
 
     def alighn_target_model(self):
