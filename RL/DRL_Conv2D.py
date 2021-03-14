@@ -15,14 +15,14 @@ from collections import defaultdict
 from collections import deque
 
 from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import Dense,GlobalMaxPooling1D,GlobalMaxPooling2D, Embedding, Reshape, Input, LSTM,Conv1D,Conv2D,MaxPooling2D 
+from tensorflow.keras.layers import Dense,GlobalMaxPooling1D,GlobalMaxPooling2D, LeakyReLU, Reshape, Input, LSTM,Conv1D,Conv2D,MaxPooling2D 
 from tensorflow.keras.optimizers import Adam
 
 
-class DRL():
+class DRL_Conv2D():
 
     def __init__(self, net, source, target):
-        self.iter = 10
+        self.iter = 100
         self.iter_actuel = 0
         self.current_iter = 0
         
@@ -83,16 +83,19 @@ class DRL():
         
 ##########################################################################################
         
-    def get_action(self,solve_var,current_node):
+    def get_action(self,solve_var,current_node,mur = False):
         state = self.get_state(solve_var)
         
         sub_list = self.get_possible_actions(current_node)
-        
-        if np.random.rand() <= self.get_epsilon(): #Epsilon
+        if mur == True:
+            print("give up")
             return random.choice(sub_list)[1]
-        else :
-            q_values = self.q_network.predict(state)
-            return np.argmax(q_values[0])
+        else:
+            if np.random.rand() <= self.get_epsilon(): #Epsilon
+                return random.choice(sub_list)[1]
+            else :
+                q_values = self.q_network.predict(state)
+                return np.argmax(q_values[0])
           
     def get_possible_actions(self,current_node):
         sub_list = []
@@ -106,7 +109,7 @@ class DRL():
         nodes_list = []
         for (i,j) in sub_list:
             nodes_list.append(j)
-        print(nodes_list)
+        #print(nodes_list)
         return nodes_list
     
     def get_state(self, solve_var,add_dim = True):
@@ -135,7 +138,7 @@ class DRL():
         return x_min + nom/denom 
     
     def get_epsilon(self):
-        return (1 - self.iter_actuel / self.iter ) 
+        return (1.03 - self.iter_actuel / self.iter ) 
         
     def give_final_reward(self,solve_var,neg_reward):
         cpt=0
@@ -146,14 +149,24 @@ class DRL():
             state = self.expirience_replay[i]
             #print("i = {} state = {}".format(i,state))
             if not (np.all(state == 0)):
+                
                 state = np.expand_dims(state,axis=0)
                 #print("state : {}".format(state))
                 action_taken = solve_var[cpt][1]
                 #print("action taken = {}".format(action_taken))
                 
                 target = self.q_network.predict(state)
-                target[0][action_taken] = target[0][action_taken] + 100/neg_reward
-                self.q_network.fit(state, self.scale(target,-1,1), epochs=1, verbose=0)
+                if len(solve_var) != 50:
+                    #print("target with action taken : {} before : {}".format(action_taken,target[0][action_taken]))
+                    #print("before : {}".format(target[0]))
+                    target[0][action_taken] = target[0][action_taken] + 50/(neg_reward - cpt)
+                    #print("A : {}".format(target[0]))
+                    #print("target with action taken : {} after : {}".format(action_taken,target[0][action_taken]))
+                else:
+                    target[0][action_taken] = target[0][action_taken] - 100
+                self.q_network.fit(state, target, epochs=1, verbose=0)
+                target = self.q_network.predict(state)
+                #print("After : {}".format(target[0]))
                 cpt = cpt + 1
                 
         self.expirience_replay = np.zeros((50,25,25,1),np.int8)
@@ -172,7 +185,7 @@ class DRL():
         state = self.expirience_replay[self.current_iter]
         state = np.expand_dims(state,axis=0)
         target = self.q_network.predict(state)
-        print("train target shape :".format(target.shape))
+        #print("train target shape :".format(target.shape))
         for j in self.get_list_possibles_nodes(current_node):
             target[0][j] = target[0][j] + 1
 
@@ -185,46 +198,49 @@ class DRL():
         model = Sequential()
         
         if test==0:
-            model.add(Input(shape=(25,)))
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-        
+            model.add(Conv2D(16, kernel_size=(2, 25), activation=LeakyReLU(),input_shape = (25,25,1)))
+            model.add(GlobalMaxPooling2D())
         elif test == 1:
-            model.add(Input(shape=(25,)))
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-            model.add(Dense(self.net.nodes, activation='relu'))
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-        
+            model.add(Conv2D(16, kernel_size=(2, 25), activation='relu',input_shape = (25,25,1)))
+            model.add(GlobalMaxPooling2D())
         elif test == 2:
-            model.add(Conv2D(3, kernel_size=(1, 2), activation='relu',input_shape = (25,25,1)))
+            model.add(Conv2D(16, kernel_size=(25, 2), activation=LeakyReLU(),input_shape = (25,25,1)))
+            model.add(GlobalMaxPooling2D())
+        elif test == 3:
+            model.add(Conv2D(16, kernel_size=(25, 2), activation='relu',input_shape = (25,25,1)))
             model.add(GlobalMaxPooling2D())
         
-        elif test == 3:
-            model.add(Conv2D(3, kernel_size=(2, 1), activation='relu',input_shape = (25,25,1)))
-            model.add(GlobalMaxPooling2D())
             
         model.add(Dense(self.net.nodes, activation='linear'))
-        print(model.summary())
-        model.compile(loss='mse', optimizer= Adam(learning_rate=0.01))
+        #print(model.summary())
+        model.compile(loss='mse', optimizer= Adam(learning_rate=0.1))
         return model
 
 ##########################################################################################     
     def DRL_table(self,bdw):
-        test_list = [2,3]
+        test_list = [0,1,2,3]
         for test in test_list:
             self.q_network = self._build_compile_model(test)
             var_dict = self.var_dict
             summ = 0
-            for iter in range (self.iter):
+            iter = -1
+            while iter < (self.iter):
+                iter = iter + 1 
                 self.iter_actuel = iter + 1
                 current_node = self.source
                 path = ""
                 cpt = 0
+                cpt_murs = 0
                 solve_var = []
                 j = self.source
-                while j!= self.target and cpt < 50:
-                    self.current_iter = cpt 
-                    j = self.get_action (solve_var,current_node)
+                
+                flag_finished = False
+                while flag_finished != True and cpt < 50:
+                    self.current_iter = cpt
+                    if cpt_murs > 50:
+                        j = self.get_action(solve_var,current_node,True)
+                    else:
+                        j = self.get_action (solve_var,current_node)
                     i = current_node
                     
                     #condition
@@ -234,12 +250,18 @@ class DRL():
                         solve_var.append((i,j))
                         var_dict[i,j] = 1
                         current_node = j
+                        cpt_murs = 0
                         cpt = cpt + 1
+                        if j == self.target:
+                            flag_finished = True
                         self.remember(solve_var)
-                    #else:
-                    #    self.train(solve_var,current_node,j)
-                        
+                    else:
+                        cpt_murs = cpt_murs + 1
                 path = path[:-1]
+                
+                # if cpt == 50:
+                #     print("ECHEC")
+                    
                 if (len(path) != 0) :
                     solve_var = self.get_path_as_list_tuples(path)
         
@@ -249,8 +271,10 @@ class DRL():
                     
                     if self.iter_actuel > 90:
                         summ = summ + len(solve_var)
-                    
-                    #print(self.get_epsilon())
+                    if self.iter_actuel > 98:
+                        print(path)
+                    #summ = summ + len(solve_var)
+                    print(self.get_epsilon())
                     print("solve_var len : {}".format(len(solve_var)))
                     
                     self.give_final_reward(solve_var,len(solve_var))
@@ -260,7 +284,9 @@ class DRL():
                     self.dict_res[iter]['Squared Ratio Sum'] = sum([self.g.edges[i, j]['ratio']**2 for i, j in solve_var])
                     self.dict_res[iter]['Score Sum'] = sum([self.g.edges[i, j]['score'] for i, j in solve_var])
                     self.dict_res[iter]['Squared Score Sum'] = sum([self.g.edges[i, j]['score']**2 for i, j in solve_var])
-    
+                else:
+                    #print("no found path for iter : {}".format(iter))
+                    iter = iter - 1
                 self.intialise_variable()
             print("{} : {}".format(test,summ/10))
                 
