@@ -5,13 +5,6 @@ Created on Wed Mar  3 11:08:00 2021
 @author: Thomas Tranchet
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Mar  3 11:08:00 2021
-
-@author: Thomas Tranchet
-"""
-
 import networkx as nx
 import pulp
 import random
@@ -22,14 +15,14 @@ from collections import defaultdict
 from collections import deque
 
 from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import Dense, Embedding, Reshape, Input, LSTM
+from tensorflow.keras.layers import Dense,GlobalMaxPooling1D,GlobalMaxPooling2D, Embedding, Reshape, Input, LSTM,Conv1D,Conv2D,MaxPooling2D 
 from tensorflow.keras.optimizers import Adam
 
 
 class DRL():
 
     def __init__(self, net, source, target):
-        self.iter = 100
+        self.iter = 10
         self.iter_actuel = 0
         self.current_iter = 0
         
@@ -45,7 +38,7 @@ class DRL():
 
         self.node_pose = self.net.node_pose
 
-        self.expirience_replay = np.zeros((50,25,25),np.int8)
+        self.expirience_replay = np.zeros((50,25,25,1),np.int8)
         
         self.q_network = self._build_compile_model(test = 0)
   
@@ -92,6 +85,7 @@ class DRL():
         
     def get_action(self,solve_var,current_node):
         state = self.get_state(solve_var)
+        
         sub_list = self.get_possible_actions(current_node)
         
         if np.random.rand() <= self.get_epsilon(): #Epsilon
@@ -112,9 +106,10 @@ class DRL():
         nodes_list = []
         for (i,j) in sub_list:
             nodes_list.append(j)
+        print(nodes_list)
         return nodes_list
     
-    def get_state(self, solve_var):
+    def get_state(self, solve_var,add_dim = True):
         state = np.zeros((self.net.nodes,self.net.nodes), np.int8)
         for (i,j) in self.g.edges:
             if (i,j) in solve_var:
@@ -125,6 +120,12 @@ class DRL():
                 state[i,j] = 2
             else:
                 state[i,j] = 0
+
+        if add_dim:
+            state = np.expand_dims(state, axis=0)
+        state = np.expand_dims(state, axis=-1)
+        
+        #print(state.shape)
         return state
     
     def scale(self,X, x_min, x_max):
@@ -132,6 +133,7 @@ class DRL():
         denom = X.max(axis=0) - X.min(axis=0)
         denom[denom==0] = 1
         return x_min + nom/denom 
+    
     def get_epsilon(self):
         return (1 - self.iter_actuel / self.iter ) 
         
@@ -144,6 +146,7 @@ class DRL():
             state = self.expirience_replay[i]
             #print("i = {} state = {}".format(i,state))
             if not (np.all(state == 0)):
+                state = np.expand_dims(state,axis=0)
                 #print("state : {}".format(state))
                 action_taken = solve_var[cpt][1]
                 #print("action taken = {}".format(action_taken))
@@ -153,20 +156,23 @@ class DRL():
                 self.q_network.fit(state, self.scale(target,-1,1), epochs=1, verbose=0)
                 cpt = cpt + 1
                 
-        self.expirience_replay = np.zeros((50,25,25),np.int8)
+        self.expirience_replay = np.zeros((50,25,25,1),np.int8)
         
         
     def remember(self,solve_var):
         state = self.get_state(solve_var)
+        #print("Rmember state shap : {}".format(state.shape))
+        #print("Rmember experience replay shap : {}".format(self.expirience_replay[self.current_iter].shape))
         for i in range (50):
             result = np.all(state==self.expirience_replay[i])
             if not result:
                 self.expirience_replay[self.current_iter] = state
                 
     def train(self,solve_var,current_node,action_taken): 
-        state = self.get_state(solve_var)        
+        state = self.expirience_replay[self.current_iter]
+        state = np.expand_dims(state,axis=0)
         target = self.q_network.predict(state)
-        
+        print("train target shape :".format(target.shape))
         for j in self.get_list_possibles_nodes(current_node):
             target[0][j] = target[0][j] + 1
 
@@ -174,34 +180,37 @@ class DRL():
         self.q_network.fit(state, self.scale(target,-1,1), epochs=1, verbose=0)
         
     def _build_compile_model(self,test,solve_var=[]):
-        state = self.get_state(solve_var)
+        state = self.get_state(solve_var,False)
 
         model = Sequential()
-        model.add(Input(shape=(25,)))
+        
         if test==0:
+            model.add(Input(shape=(25,)))
             model.add(Dense(self.net.nodes*2, activation='relu'))
             model.add(Dense(self.net.nodes*2, activation='relu'))
         
         elif test == 1:
+            model.add(Input(shape=(25,)))
             model.add(Dense(self.net.nodes*2, activation='relu'))
             model.add(Dense(self.net.nodes, activation='relu'))
             model.add(Dense(self.net.nodes*2, activation='relu'))
-            
-        elif test==2:
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-            model.add(Dense(self.net.nodes, activation='relu'))
-            model.add(Dense(self.net.nodes*2, activation='relu'))
-            model.add(Dense(self.net.nodes, activation='relu'))
-            model.add(Dense(self.net.nodes*2, activation='relu'))            
+        
+        elif test == 2:
+            model.add(Conv2D(3, kernel_size=(1, 2), activation='relu',input_shape = (25,25,1)))
+            model.add(GlobalMaxPooling2D())
+        
+        elif test == 3:
+            model.add(Conv2D(3, kernel_size=(2, 1), activation='relu',input_shape = (25,25,1)))
+            model.add(GlobalMaxPooling2D())
             
         model.add(Dense(self.net.nodes, activation='linear'))
-        
+        print(model.summary())
         model.compile(loss='mse', optimizer= Adam(learning_rate=0.01))
         return model
 
 ##########################################################################################     
     def DRL_table(self,bdw):
-        test_list = [0,1,2]
+        test_list = [2,3]
         for test in test_list:
             self.q_network = self._build_compile_model(test)
             var_dict = self.var_dict
@@ -227,8 +236,8 @@ class DRL():
                         current_node = j
                         cpt = cpt + 1
                         self.remember(solve_var)
-                    else:
-                        self.train(solve_var,current_node,j)
+                    #else:
+                    #    self.train(solve_var,current_node,j)
                         
                 path = path[:-1]
                 if (len(path) != 0) :
@@ -242,7 +251,7 @@ class DRL():
                         summ = summ + len(solve_var)
                     
                     #print(self.get_epsilon())
-                    #print("solve_var len : {}".format(len(solve_var)))
+                    print("solve_var len : {}".format(len(solve_var)))
                     
                     self.give_final_reward(solve_var,len(solve_var))
                     
