@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 from collections import deque
+import matplotlib.pyplot as plt
 
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import Dense,GlobalMaxPooling1D,GlobalMaxPooling2D, LeakyReLU, Reshape, Input, LSTM,Conv1D,Conv2D,MaxPooling2D 
 from tensorflow.keras.optimizers import Adam
 
+plt.style.use('ggplot')
 
 class DRL_Conv2D():
 
@@ -46,10 +48,7 @@ class DRL_Conv2D():
         for (i, j) in self.g.edges:
             self.var_dict[i, j] = 0
 
-        self.dict_res = defaultdict(dict)
-
         self.node_pose = self.net.node_pose
-        
         self.g = self.net.g
 
 ##########################################################################################
@@ -76,10 +75,24 @@ class DRL_Conv2D():
             edge_color=colors, 
             with_labels=True)
         ## Save chosen path ##
-        plt.show()
+        #plt.show()
         #plt.savefig("imgs/Q_table/Q_table_iter_{}".format(iter))
         plt.close()
         self.net.init_colors()
+    
+    def plot_graph(self,test):
+        x = []
+        y = []
+        for i in range(self.iter):
+            x.append(self.dict_res[i]["Number of nodes"])
+            y.append(i)
+            
+        p = plt.plot(y, x)
+        
+        plt.title('Average on 10 last iter : {}'.format(test))
+        plt.show(p)
+        plt.close()
+        
         
 ##########################################################################################
         
@@ -88,7 +101,7 @@ class DRL_Conv2D():
         
         sub_list = self.get_possible_actions(current_node)
         if mur == True:
-            print("give up")
+            #print("give up")
             return random.choice(sub_list)[1]
         else:
             if np.random.rand() <= self.get_epsilon(): #Epsilon
@@ -154,8 +167,9 @@ class DRL_Conv2D():
                 #print("state : {}".format(state))
                 action_taken = solve_var[cpt][1]
                 #print("action taken = {}".format(action_taken))
-                
+               
                 target = self.q_network.predict(state)
+                print("target shape : {}".format(target[0].shape))
                 if len(solve_var) != 50:
                     #print("target with action taken : {} before : {}".format(action_taken,target[0][action_taken]))
                     #print("before : {}".format(target[0]))
@@ -218,7 +232,7 @@ class DRL_Conv2D():
 
 ##########################################################################################     
     def DRL_table(self,bdw):
-        test_list = [0,1,2,3]
+        test_list = [1]
         for test in test_list:
             self.q_network = self._build_compile_model(test)
             var_dict = self.var_dict
@@ -271,11 +285,11 @@ class DRL_Conv2D():
                     
                     if self.iter_actuel > 90:
                         summ = summ + len(solve_var)
-                    if self.iter_actuel > 98:
-                        print(path)
+                    # if self.iter_actuel > 98:
+                    #     print(path)
                     #summ = summ + len(solve_var)
-                    print(self.get_epsilon())
-                    print("solve_var len : {}".format(len(solve_var)))
+                    #print(self.get_epsilon())
+                    #print("solve_var len : {}".format(len(solve_var)))
                     
                     self.give_final_reward(solve_var,len(solve_var))
                     
@@ -288,7 +302,8 @@ class DRL_Conv2D():
                     #print("no found path for iter : {}".format(iter))
                     iter = iter - 1
                 self.intialise_variable()
-            print("{} : {}".format(test,summ/10))
+            self.plot_graph(summ/10)
+            #print("{} : {}".format(test,summ/10))
                 
                 
     
