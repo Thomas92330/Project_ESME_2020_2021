@@ -9,7 +9,7 @@ from MARL import MARL
 net = network(25,4)
 
 net.intiate_values()
-#net.draw_initial_graph()
+net.draw_initial_graph()
 
 
 bdw = 1
@@ -20,16 +20,16 @@ bdw = 1
 
 # =============================================================================
 # DQRL_Conv2d = DRL_Conv2D(net,1,24) 
-# DQRL_ConvLSTM2D = DRL_ConvLSTM2D(net,1,24) 
+DQRL_ConvLSTM2D = DRL_ConvLSTM2D(net,1,24) 
 # DQRL = DRL(net,1,24)
 # 
 # 
 # 
 # DQRL.DRL_table(bdw)
-# DQRL_ConvLSTM2D.DRL_table(bdw)
+DQRL_ConvLSTM2D.DRL_table(bdw)
 # DQRL_Conv2d.DRL_table(bdw)
 # =============================================================================
 
-MARL_ = MARL(net,1,24)
+#MARL_ = MARL(net,1,24)
 
-MARL.DRL_table(bdw)
+#MARL.DRL_table(bdw)

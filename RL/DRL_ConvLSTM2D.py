@@ -88,10 +88,10 @@ class DRL_ConvLSTM2D():
             x.append(self.dict_res[i]["Number of nodes"])
             y.append(i)
             
-        p = plt.plot(y, x)
+        plt.plot(y, x)
         
         plt.title('Average on 10 last iter : {}'.format(test))
-        plt.show(p)
+        plt.show()
         plt.close()
         
         
@@ -283,7 +283,7 @@ class DRL_ConvLSTM2D():
                     iter = iter - 1
                 self.intialise_variable()
             self.plot_graph(summ/10)
-            #print("{} : {}".format(test,summ/10))
+            print("{} : {}".format(test,summ/10))
                 
                 
     
